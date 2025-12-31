@@ -1,24 +1,24 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import ProjectList from './components/ProjectList';
-import DispatchManager from './components/DispatchManager';
-import CustomerList from './components/CustomerList';
-import TeamList from './components/TeamList';
-import Analytics from './components/Analytics';
-import Settings from './components/Settings';
-import HelpCenter from './components/HelpCenter';
-import AIAssistant from './components/AIAssistant';
-import ProjectModal from './components/ProjectModal';
-import ProjectDetail from './components/ProjectDetail';
-import CustomerModal from './components/CustomerModal';
-import TeamModal from './components/TeamModal';
-import Login from './components/Login';
-import { Menu, LogOut, Layers, Cloud, CloudOff, RefreshCw, AlertCircle, CheckCircle, ShieldCheck, Database, Zap, Sparkles, Globe, Activity, ShieldAlert } from 'lucide-react';
-import { MOCK_PROJECTS, MOCK_DEPARTMENTS } from './constants';
-import { Project, ProjectStatus, Customer, TeamMember, User, Department, ProjectComment } from './types';
-import { googleDriveService, DEFAULT_CLIENT_ID } from './services/googleDriveService';
+import Sidebar from './components/Sidebar.tsx';
+import Dashboard from './components/Dashboard.tsx';
+import ProjectList from './components/ProjectList.tsx';
+import DispatchManager from './components/DispatchManager.tsx';
+import CustomerList from './components/CustomerList.tsx';
+import TeamList from './components/TeamList.tsx';
+import Analytics from './components/Analytics.tsx';
+import Settings from './components/Settings.tsx';
+import HelpCenter from './components/HelpCenter.tsx';
+import AIAssistant from './components/AIAssistant.tsx';
+import ProjectModal from './components/ProjectModal.tsx';
+import ProjectDetail from './components/ProjectDetail.tsx';
+import CustomerModal from './components/CustomerModal.tsx';
+import TeamModal from './components/TeamModal.tsx';
+import Login from './components/Login.tsx';
+import { Menu, LogOut, Layers, Globe, Sparkles, Activity, ShieldAlert, CheckCircle, RefreshCw, CloudOff, AlertCircle, Database, Zap } from 'lucide-react';
+import { MOCK_PROJECTS, MOCK_DEPARTMENTS } from './constants.ts';
+import { Project, ProjectStatus, Customer, TeamMember, User, ProjectComment } from './types.ts';
+import { googleDriveService, DEFAULT_CLIENT_ID } from './services/googleDriveService.ts';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
