@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>生活品質智慧工程管理系統 - Production v1.0</title>
     <!-- 使用相對路徑以相容 GitHub Pages -->
-    <link rel="manifest" href="public/manifest.json">
     <meta name="theme-color" content="#ea580c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,6 +14,10 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- 引入 Babel 讓瀏覽器可以直接執行 TSX 檔案 -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
         :root {
             --sat: env(safe-area-inset-top);
@@ -84,6 +87,8 @@
 </head>
 <body>
     <div id="root"></div>
+    <!-- 核心進入點：使用 Babel 轉譯 index.tsx -->
+    <script type="text/babel" data-type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
