@@ -1,0 +1,14 @@
+
+{
+  "name": "生活品質工程管理系統",
+  "short_name": "工程管家",
+  "description": "企業級 AI 智慧化營造管理平台，整合雲端同步與自動化派工分析。",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#ea580c"
+}
