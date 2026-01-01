@@ -1,24 +1,24 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import Sidebar from './components/Sidebar.tsx';
-import Dashboard from './components/Dashboard.tsx';
-import ProjectList from './components/ProjectList.tsx';
-import DispatchManager from './components/DispatchManager.tsx';
-import CustomerList from './components/CustomerList.tsx';
-import TeamList from './components/TeamList.tsx';
-import Analytics from './components/Analytics.tsx';
-import Settings from './components/Settings.tsx';
-import HelpCenter from './components/HelpCenter.tsx';
-import AIAssistant from './components/AIAssistant.tsx';
-import ProjectModal from './components/ProjectModal.tsx';
-import ProjectDetail from './components/ProjectDetail.tsx';
-import CustomerModal from './components/CustomerModal.tsx';
-import TeamModal from './components/TeamModal.tsx';
-import Login from './components/Login.tsx';
-import { Menu, LogOut, Layers, Globe, Sparkles, Activity, ShieldAlert, CheckCircle, RefreshCw, CloudOff, AlertCircle, Database, Zap } from 'lucide-react';
-import { MOCK_PROJECTS, MOCK_DEPARTMENTS } from './constants.ts';
-import { Project, ProjectStatus, Customer, TeamMember, User, ProjectComment } from './types.ts';
-import { googleDriveService, DEFAULT_CLIENT_ID } from './services/googleDriveService.ts';
+import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import ProjectList from './components/ProjectList';
+import DispatchManager from './components/DispatchManager';
+import CustomerList from './components/CustomerList';
+import TeamList from './components/TeamList';
+import Analytics from './components/Analytics';
+import Settings from './components/Settings';
+import HelpCenter from './components/HelpCenter';
+import AIAssistant from './components/AIAssistant';
+import ProjectModal from './components/ProjectModal';
+import ProjectDetail from './components/ProjectDetail';
+import CustomerModal from './components/CustomerModal';
+import TeamModal from './components/TeamModal';
+import Login from './components/Login';
+import { Menu, LogOut, Layers, Cloud, CloudOff, RefreshCw, AlertCircle, CheckCircle, ShieldCheck, Database, Zap, Sparkles, Globe, Activity, ShieldAlert } from 'lucide-react';
+import { MOCK_PROJECTS, MOCK_DEPARTMENTS } from './constants';
+import { Project, ProjectStatus, Customer, TeamMember, User, Department, ProjectComment } from './types';
+import { googleDriveService, DEFAULT_CLIENT_ID } from './services/googleDriveService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   
+  // 系統狀態
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [cloudError, setCloudError] = useState<string | null>(null);
@@ -46,8 +47,10 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initialSyncDone, setInitialSyncDone] = useState(false);
 
+  // 正式上線初始化邏輯
   useEffect(() => {
     const startup = async () => {
+      // 1. 恢復本地會話
       const savedUser = localStorage.getItem('bt_user');
       if (savedUser) {
          const parsedUser = JSON.parse(savedUser);
@@ -55,6 +58,7 @@ const App: React.FC = () => {
          setViewingDeptId(parsedUser.role === 'SuperAdmin' || parsedUser.role === 'Guest' ? 'all' : (parsedUser.departmentId || 'DEPT-1'));
       }
       
+      // 2. 載入本地緩存數據 (作為雲端未就緒前的備援)
       const savedProjects = localStorage.getItem('bt_projects');
       const initialProjects = savedProjects ? JSON.parse(savedProjects) : MOCK_PROJECTS;
       setProjects(initialProjects.map((p: Project) => ({ 
@@ -67,6 +71,7 @@ const App: React.FC = () => {
       setCustomers(JSON.parse(localStorage.getItem('bt_customers') || '[]'));
       setTeamMembers(JSON.parse(localStorage.getItem('bt_team') || '[]'));
       
+      // 3. 嘗試自動續連雲端
       try {
         await googleDriveService.init(DEFAULT_CLIENT_ID);
         if (localStorage.getItem('bt_cloud_connected') === 'true' && user?.role !== 'Guest') {
@@ -151,12 +156,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!initialSyncDone || !user) return;
+    
+    // 定期本地保存 (訪客不保存)
     if (user.role !== 'Guest') {
       localStorage.setItem('bt_projects', JSON.stringify(projects));
       localStorage.setItem('bt_customers', JSON.stringify(customers));
       localStorage.setItem('bt_team', JSON.stringify(teamMembers));
       setLastLocalSave(new Date().toLocaleTimeString());
     }
+
+    // 智慧雲端增量同步
     if (isCloudConnected && !cloudError && user.role !== 'Guest') {
       const timer = setTimeout(() => {
           handleCloudSync();
@@ -168,17 +177,6 @@ const App: React.FC = () => {
   const handleUpdateStatus = (projectId: string, status: ProjectStatus) => {
     if (user?.role === 'Guest') return;
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status } : p));
-  };
-
-  const handleDeleteItems = (ids: string | string[]) => {
-    if (user?.role === 'Guest') return;
-    const idArray = Array.isArray(ids) ? ids : [ids];
-    if (confirm(`確定要刪除這 ${idArray.length} 個項目嗎？此操作不可撤回。`)) {
-      setProjects(prev => prev.filter(p => !idArray.includes(p.id)));
-      if (selectedProjectId && idArray.includes(selectedProjectId)) {
-        setSelectedProjectId(null);
-      }
-    }
   };
 
   const handleAddComment = (projectId: string, text: string) => {
@@ -256,10 +254,30 @@ const App: React.FC = () => {
                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${user.role === 'Guest' ? 'bg-orange-500' : 'bg-emerald-400'}`}></div>
                 <span className="text-[10px] font-black uppercase tracking-widest">{user.role === 'Guest' ? '訪客唯讀模式' : '生產環境 已上線'}</span>
               </div>
+              
+              {user.role !== 'Guest' && (
+                <div className="flex items-center">
+                  {cloudError ? (
+                    <button onClick={handleConnectCloud} className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-200 animate-pulse"><AlertCircle size={14} /><span className="text-[10px] font-black uppercase tracking-[0.1em]">{cloudError}</span></button>
+                  ) : isCloudConnected ? (
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 shadow-sm">
+                      <div className="relative"><CheckCircle size={14} className="text-emerald-500" />{isSyncing && <RefreshCw size={10} className="absolute -top-1 -right-1 text-emerald-600 animate-spin bg-white rounded-full p-0.5" />}</div>
+                      <div className="flex flex-col"><span className="text-[9px] font-black uppercase tracking-widest leading-none">雲端儲存中</span></div>
+                    </div>
+                  ) : (
+                    <button onClick={handleConnectCloud} className="flex items-center gap-2 px-3 py-1.5 bg-stone-100 text-stone-400 rounded-2xl border border-stone-200 hover:text-orange-600"><CloudOff size={14} /><span className="text-[10px] font-black uppercase tracking-widest">離線保護模式</span></button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           
           <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-2xl border border-orange-100">
+               <Sparkles size={12} className="text-orange-500 animate-pulse" />
+               <span className="text-[10px] font-black uppercase tracking-widest">AI 智慧分析已掛載</span>
+            </div>
+
             {user.role === 'SuperAdmin' || user.role === 'Guest' ? (
               <div className="flex items-center gap-2 bg-stone-100 px-3 py-1.5 rounded-xl border border-stone-200">
                 <Layers size={14} className="text-stone-400" />
@@ -269,6 +287,7 @@ const App: React.FC = () => {
                 </select>
               </div>
             ) : <span className="text-[11px] font-black text-orange-600 bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-100">{MOCK_DEPARTMENTS.find(d => d.id === user.departmentId)?.name}</span>}
+            
             <button onClick={handleLogout} className="p-2 text-stone-400 hover:text-rose-600 transition-colors"><LogOut size={20} /></button>
           </div>
         </header>
@@ -279,25 +298,28 @@ const App: React.FC = () => {
               project={selectedProject} user={user} teamMembers={teamMembers}
               onBack={() => setSelectedProjectId(null)} 
               onEdit={(p) => { setEditingProject(p); setIsModalOpen(true); }}
-              onDelete={(id) => handleDeleteItems(id)}
+              onDelete={(id) => { if(confirm('確定要刪除嗎？')) { setProjects(prev => prev.filter(p => p.id !== id)); setSelectedProjectId(null); } }}
               onUpdateStatus={(status) => handleUpdateStatus(selectedProject.id, status)}
               onAddComment={(text) => handleAddComment(selectedProject.id, text)}
               onUpdateTasks={() => {}} onUpdateProgress={() => {}} onUpdateExpenses={() => {}} onUpdateWorkAssignments={() => {}} onLossClick={() => {}}
             />
           ) : (
             <div className="pb-32">
-              {activeTab === 'dashboard' && <Dashboard projects={filteredData.projects} onProjectClick={(p) => setSelectedProjectId(p.id)} />}
-              {activeTab === 'projects' && (
-                <ProjectList 
-                  projects={filteredData.projects} 
-                  user={user} 
-                  onAddClick={() => { setEditingProject(null); setIsModalOpen(true); }} 
-                  onEditClick={(p) => { setEditingProject(p); setIsModalOpen(true); }} 
-                  onDeleteClick={handleDeleteItems} 
-                  onDetailClick={(p) => setSelectedProjectId(p.id)} 
-                  onLossClick={() => {}} 
-                />
+              {activeTab === 'dashboard' && !isCloudConnected && user.role !== 'Guest' && (
+                <div className="mx-4 lg:mx-8 mt-6 p-5 bg-orange-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-between gap-6 animate-in slide-in-from-top-6">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white/20 p-3 rounded-2xl"><ShieldCheck size={28} /></div>
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.1em]">啟動數據安全備份</p>
+                      <p className="text-[11px] opacity-80 font-bold mt-1">為了確保數據不遺失，請立即連結您的 Google Drive。</p>
+                    </div>
+                  </div>
+                  <button onClick={handleConnectCloud} className="bg-white text-orange-600 px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-stone-50 transition-all flex items-center gap-3"><Zap size={16} fill="currentColor" /> 立即連結雲端</button>
+                </div>
               )}
+              
+              {activeTab === 'dashboard' && <Dashboard projects={filteredData.projects} onProjectClick={(p) => setSelectedProjectId(p.id)} />}
+              {activeTab === 'projects' && <ProjectList projects={filteredData.projects} user={user} onAddClick={() => { setEditingProject(null); setIsModalOpen(true); }} onEditClick={(p) => { setEditingProject(p); setIsModalOpen(true); }} onDeleteClick={(id) => { if(confirm('刪除操作不可逆，確定嗎？')) setProjects(prev => prev.filter(p => p.id !== id)); }} onDetailClick={(p) => setSelectedProjectId(p.id)} onLossClick={() => {}} />}
               {activeTab === 'settings' && (
                 <Settings 
                   user={user} projects={projects} customers={customers} teamMembers={teamMembers} 
@@ -310,7 +332,7 @@ const App: React.FC = () => {
                 />
               )}
               {activeTab === 'team' && <TeamList members={filteredData.teamMembers} onAddClick={() => setIsTeamModalOpen(true)} onEditClick={setEditingMember} onDeleteClick={() => {}} />}
-              {activeTab === 'customers' && <CustomerList customers={filteredData.customers} user={user} onAddClick={() => setIsCustomerModalOpen(true)} onEditClick={setEditingCustomer} onDeleteClick={() => {}} />}
+              {activeTab === 'customers' && <CustomerList customers={filteredData.customers} onAddClick={() => setIsCustomerModalOpen(true)} onEditClick={setEditingCustomer} onDeleteClick={() => {}} />}
               {activeTab === 'dispatch' && <DispatchManager projects={filteredData.projects} teamMembers={filteredData.teamMembers} onAddDispatch={(pid, ass) => setProjects(prev => prev.map(p => p.id === pid ? { ...p, workAssignments: [ass, ...(p.workAssignments || [])] } : p))} onDeleteDispatch={(pid, aid) => setProjects(prev => prev.map(p => p.id === pid ? { ...p, workAssignments: (p.workAssignments || []).filter(a => a.id !== aid) } : p))} />}
               {activeTab === 'analytics' && <Analytics projects={filteredData.projects} />}
               {activeTab === 'help' && <HelpCenter />}
@@ -318,6 +340,21 @@ const App: React.FC = () => {
           )}
         </div>
         
+        {!selectedProjectId && (
+          <div className="fixed bottom-8 right-8 z-[45] flex flex-col items-end gap-3 no-print">
+            <div className="bg-white/90 backdrop-blur-2xl border border-stone-200 p-4 rounded-[2rem] shadow-2xl flex items-center gap-6 animate-in slide-in-from-right-12">
+              <div className="flex items-center gap-3 border-r border-stone-100 pr-6">
+                <Activity size={18} className="text-emerald-500" />
+                <div className="flex flex-col"><span className="text-[9px] font-black text-stone-400 uppercase tracking-widest leading-none">系統狀態</span><span className="text-[10px] font-bold text-stone-900">核心正常</span></div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Database size={16} className="text-blue-500" />
+                <div className="flex flex-col"><span className="text-[9px] font-black text-stone-400 uppercase tracking-widest leading-none">數據緩存</span><span className="text-[10px] font-bold text-stone-900">{lastLocalSave}</span></div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="no-print"><AIAssistant projects={filteredData.projects} /></div>
       </main>
 

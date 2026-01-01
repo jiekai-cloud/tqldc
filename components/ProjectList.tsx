@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, FileSpreadsheet, Pencil, Trash2, CalendarDays, FilterX, Activity, XCircle, ChevronLeft, ChevronRight, Hash, ShieldAlert, CheckSquare, Square, AlertTriangle } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, Pencil, Trash2, CalendarDays, FilterX, Activity, XCircle, ChevronLeft, ChevronRight, Hash, ShieldAlert } from 'lucide-react';
 import { Project, ProjectStatus, User } from '../types';
 import { exportProjectsToCSV } from '../utils/csvExport';
 
@@ -9,7 +9,7 @@ interface ProjectListProps {
   user: User;
   onAddClick: () => void;
   onEditClick: (project: Project) => void;
-  onDeleteClick: (id: string | string[]) => void;
+  onDeleteClick: (id: string) => void;
   onLossClick: (project: Project) => void;
   onDetailClick: (project: Project) => void;
 }
@@ -20,12 +20,11 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  
   const isReadOnly = user.role === 'Guest';
 
+  // 1. 強化搜尋與篩選邏輯
   const filteredProjects = useMemo(() => {
-    setCurrentPage(1);
+    setCurrentPage(1); // 搜尋時重置分頁
     return projects.filter(p => {
       const matchSearch = 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -36,37 +35,18 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
     });
   }, [projects, searchTerm, selectedStatus]);
 
+  // 2. 分頁邏輯
   const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
   const paginatedProjects = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredProjects.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredProjects, currentPage]);
 
-  const toggleSelectAll = () => {
-    if (selectedIds.length === paginatedProjects.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(paginatedProjects.map(p => p.id));
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return;
-    if (confirm(`確定要刪除選中的 ${selectedIds.length} 個案件嗎？此操作不可恢復。`)) {
-      onDeleteClick(selectedIds);
-      setSelectedIds([]);
-    }
-  };
-
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
       case ProjectStatus.CONSTRUCTING: return 'bg-orange-100 text-orange-700 border-orange-200';
       case ProjectStatus.COMPLETED: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case ProjectStatus.LOST: return 'bg-stone-200 text-stone-50 border-stone-300';
+      case ProjectStatus.LOST: return 'bg-stone-200 text-stone-500 border-stone-300';
       case ProjectStatus.CANCELLED: return 'bg-rose-100 text-rose-700 border-rose-200';
       default: return 'bg-stone-100 text-stone-700 border-stone-200';
     }
@@ -77,23 +57,14 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
           <h1 className="text-xl font-black text-stone-900">案件中心</h1>
-          <p className="text-[10px] text-stone-500 font-bold uppercase tracking-widest">
-            {selectedIds.length > 0 ? `已選取 ${selectedIds.length} 個案件` : `目前共管理 ${projects.length} 件工程項目`}
-          </p>
+          <p className="text-[10px] text-stone-500 font-bold uppercase tracking-widest">目前共管理 {projects.length} 件工程項目</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          {selectedIds.length > 0 && !isReadOnly && (
-            <button 
-              onClick={handleBulkDelete}
-              className="flex-1 bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-100 animate-in zoom-in-95"
-            >
-              <Trash2 size={16} /> 刪除選取項目
-            </button>
-          )}
           <button onClick={() => exportProjectsToCSV(projects)} className="flex-1 bg-white border border-stone-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-stone-50 transition-all"><FileSpreadsheet size={14} /> 匯出 CSV</button>
-          {!isReadOnly ? (
+          {!isReadOnly && (
             <button onClick={onAddClick} className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:bg-orange-700 active:scale-95 transition-all"><Plus size={16} /> 新增案件</button>
-          ) : (
+          )}
+          {isReadOnly && (
             <div className="flex-1 bg-stone-100 text-stone-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border border-stone-200 cursor-not-allowed">
               <ShieldAlert size={14} /> 訪客唯讀模式
             </div>
@@ -112,18 +83,13 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
              {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
            </select>
         </div>
-        <button onClick={() => { setSearchTerm(''); setSelectedStatus('all'); setSelectedIds([]); }} className="bg-stone-900 py-2.5 rounded-xl text-[10px] font-black uppercase text-white hover:bg-black transition-all">重設篩選</button>
+        <button onClick={() => { setSearchTerm(''); setSelectedStatus('all'); }} className="bg-stone-900 py-2.5 rounded-xl text-[10px] font-black uppercase text-white hover:bg-black transition-all">清除所有篩選</button>
       </div>
 
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden overflow-x-auto touch-scroll">
-        <table className="w-full text-left min-w-[900px]">
+        <table className="w-full text-left min-w-[850px]">
           <thead className="bg-stone-50 border-b border-stone-200 text-[10px] font-black text-stone-400 uppercase tracking-widest">
             <tr>
-              <th className="px-6 py-4 w-10">
-                <button onClick={toggleSelectAll} className="text-stone-400 hover:text-stone-600 transition-colors">
-                  {selectedIds.length === paginatedProjects.length && paginatedProjects.length > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
-                </button>
-              </th>
               <th className="px-6 py-4">案號 / 案件名稱</th>
               <th className="px-6 py-4">業主 / 負責人</th>
               <th className="px-6 py-4 text-center">當前狀態</th>
@@ -134,16 +100,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
           </thead>
           <tbody className="divide-y divide-stone-100 text-sm">
             {paginatedProjects.length > 0 ? paginatedProjects.map(p => (
-              <tr 
-                key={p.id} 
-                className={`hover:bg-orange-50/30 transition-colors cursor-pointer group ${selectedIds.includes(p.id) ? 'bg-orange-50/50' : ''}`}
-                onClick={() => onDetailClick(p)}
-              >
-                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => toggleSelectOne(p.id)} className="text-stone-300 hover:text-orange-600 transition-colors">
-                    {selectedIds.includes(p.id) ? <CheckSquare size={18} className="text-orange-600" /> : <Square size={18} />}
-                  </button>
-                </td>
+              <tr key={p.id} onClick={() => onDetailClick(p)} className="hover:bg-orange-50/30 transition-colors cursor-pointer group">
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black text-stone-400 mb-0.5">{p.id}</span>
@@ -168,11 +125,11 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right font-black text-xs text-stone-900">NT${p.budget.toLocaleString()}</td>
-                <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="px-6 py-4 text-center">
                    {!isReadOnly ? (
                      <div className="flex justify-center gap-1">
-                       <button onClick={() => onEditClick(p)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all"><Pencil size={14} className="text-stone-400 hover:text-blue-600" /></button>
-                       <button onClick={() => onDeleteClick(p.id)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all"><Trash2 size={14} className="text-stone-400 hover:text-rose-600" /></button>
+                       <button onClick={(e) => { e.stopPropagation(); onEditClick(p); }} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all"><Pencil size={14} className="text-stone-400 group-hover:text-blue-600" /></button>
+                       <button onClick={(e) => { e.stopPropagation(); onDeleteClick(p.id); }} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all"><Trash2 size={14} className="text-stone-400 group-hover:text-rose-600" /></button>
                      </div>
                    ) : (
                      <span className="text-[10px] font-black text-stone-300 uppercase italic">唯讀</span>
@@ -181,7 +138,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
               </tr>
             )) : (
               <tr>
-                <td colSpan={7} className="px-6 py-20 text-center">
+                <td colSpan={6} className="px-6 py-20 text-center">
                    <div className="flex flex-col items-center gap-2 opacity-30">
                      <Search size={40} />
                      <p className="text-xs font-black uppercase tracking-widest">找不到符合條件的案件</p>
@@ -193,6 +150,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
         </table>
       </div>
 
+      {/* 分頁控制列 */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-stone-200 shadow-sm">
           <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
@@ -219,6 +177,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, user, onAddClick, o
                    </button>
                  );
                })}
+               {totalPages > 5 && <span className="text-stone-300">...</span>}
             </div>
             <button 
               disabled={currentPage === totalPages}
